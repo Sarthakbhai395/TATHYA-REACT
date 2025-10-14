@@ -17,6 +17,8 @@ const upload = require('../middleware/uploadMiddleware');
 // Public routes
 router.get('/community/:communityId', getPostsByCommunity);
 // Global recent posts
+// Global recent posts
+const { getRecentPosts } = require('../controllers/postController');
 router.get('/', getRecentPosts);
 router.get('/:id', getPostById);
 

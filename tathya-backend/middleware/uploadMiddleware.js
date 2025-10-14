@@ -22,8 +22,9 @@ try {
 // Configure storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Ensure 'uploads' directory exists
-    cb(null, 'uploads/');
+    // Ensure 'uploads' directory exists and use absolute path
+    const uploadsDir = path.join(__dirname, '..', 'uploads');
+    cb(null, uploadsDir);
   },
   filename: function (req, file, cb) {
     // Generate unique filename

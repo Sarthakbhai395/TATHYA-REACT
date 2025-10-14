@@ -168,16 +168,28 @@ const deletePost = asyncHandler(async (req, res) => {
   if (post) {
     // Check ownership or moderation rights
     const isOwner = post.userId.toString() === req.user._id.toString();
-    const community = await Community.findById(post.communityId);
-    const isModerator = community && community.moderators.includes(req.user._id);
-
-    if (!isOwner && !isModerator) {
-      res.status(401);
-      throw new Error('Not authorized to delete this post');
+    
+    // Allow post owner to delete without community check
+    if (isOwner) {
+      // Use findByIdAndDelete instead of remove() which is deprecated
+      await Post.findByIdAndDelete(req.params.id);
+      return res.json({ message: 'Post removed' });
     }
-
-    await post.remove();
-    res.json({ message: 'Post removed' });
+    
+    // If not owner, check if moderator (only if post belongs to a community)
+    if (post.communityId) {
+      const community = await Community.findById(post.communityId);
+      const isModerator = community && community.moderators.includes(req.user._id);
+      
+      if (isModerator) {
+        await Post.findByIdAndDelete(req.params.id);
+        return res.json({ message: 'Post removed' });
+      }
+    }
+    
+    // If reached here, user is neither owner nor moderator
+    res.status(401);
+    throw new Error('Not authorized to delete this post');
   } else {
     res.status(404);
     throw new Error('Post not found');
@@ -213,7 +225,7 @@ const likePost = asyncHandler(async (req, res) => {
 
 // @desc    Add a comment to a post
 // @route   POST /api/posts/:id/comments
-// @access  Private (Member of community)
+// @access  Private
 const addComment = asyncHandler(async (req, res) => {
   const { content, replyTo } = req.body; // replyTo is optional, for replying to a comment
 
@@ -225,11 +237,14 @@ const addComment = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
   if (post) {
-    // Check if user is a member of the community (security)
-    const community = await Community.findById(post.communityId);
-    if (!community || !community.members.includes(req.user._id)) {
-      res.status(401);
-      throw new Error('You must be a member of the community to comment');
+    // Only check community membership if post belongs to a community
+    if (post.communityId) {
+      const community = await Community.findById(post.communityId);
+      // Allow commenting if community doesn't exist (might be deleted) or user is a member
+      if (community && !community.members.includes(req.user._id)) {
+        res.status(401);
+        throw new Error('You must be a member of the community to comment');
+      }
     }
 
     const newComment = {
@@ -337,6 +352,7 @@ const likeComment = asyncHandler(async (req, res) => {
 
 module.exports = {
   createPost,
+  getRecentPosts,
   getPostsByCommunity,
   getPostById,
   updatePost,

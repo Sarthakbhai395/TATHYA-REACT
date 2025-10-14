@@ -328,7 +328,7 @@ const Signup = () => {
       </motion.div>
 
       {/* Liquid Glass Card Styles */}
-      <style jsx>{`
+      <style>{`
         /* Liquid Glass Card */
         .liquid-glass-card {
           position: relative;

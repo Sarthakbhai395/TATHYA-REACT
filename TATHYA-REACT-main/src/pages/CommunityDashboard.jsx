@@ -1,7 +1,11 @@
 // src/pages/CommunityDashboard.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { getCommunityById, joinCommunity, leaveCommunity } from '../services/communityService';
 import { motion, AnimatePresence } from 'framer-motion';
+import postService from '../services/postService';
+import { API_BASE } from '../utils/api';
+import { getAuthUser } from '../services/authService';
 
 const CommunityDashboard = () => {
   const navigate = useNavigate();
@@ -9,19 +13,105 @@ const CommunityDashboard = () => {
   const location = useLocation();
   const fileInputImageRef = useRef(null);
   const fileInputVideoRef = useRef(null);
+  const fileRef = useRef(null);
 
   // --- State Management ---
-  const [communityData, setCommunityData] = useState({
-    id: 1, // Example ID
-    name: 'Mumbai Chapter',
-    region: 'Maharashtra',
-    members: 2500,
-    description: 'Connect with students in Mumbai facing academic pressure, harassment, or career challenges. Share experiences, get advice, and support each other.',
-    image: 'https://images.unsplash.com/photo-1592085550638-e6bc180a731e?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    tags: ['Academic Pressure', 'Harassment', 'Career'],
-    isJoined: true, // Assume user is joined when visiting dashboard
-    icon: 'fas fa-monument',
-  });
+  const [title, setTitle] = useState('');
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const currentUser = getAuthUser();
+  const uid = currentUser && (currentUser._id || currentUser.id || currentUser.userId || (currentUser.user && (currentUser.user._id || currentUser.user.id)));
+  const [communityData, setCommunityData] = useState(null);
+
+  useEffect(() => { load(); }, [communityId]);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const community = await getCommunityById(communityId);
+      setCommunityData(community);
+      const json = await postService.fetchPostsByCommunity(communityId);
+      const normalized = (json.posts || []).map(normalizePost);
+      setPosts(normalized);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleFileChange = (e, type) => {
+    const selectedFiles = Array.from(e.target.files);
+    if (type === 'image') {
+      setNewPostImages(selectedFiles);
+    } else if (type === 'video') {
+      setNewPostVideos(selectedFiles);
+    }
+  };
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('title', newPostContent);
+      formData.append('content', newPostContent);
+      formData.append('communityId', communityId);
+      newPostImages.forEach((file) => formData.append('images', file));
+      newPostVideos.forEach((file) => formData.append('videos', file));
+
+      await postService.createPost(formData);
+      setNewPostContent('');
+      setNewPostImages([]);
+      setNewPostVideos([]);
+      fileInputImageRef.current.value = '';
+      fileInputVideoRef.current.value = '';
+      load();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const normalizePost = (post) => {
+    return {
+      id: post._id,
+      author: {
+        name: post.user ? post.user.name : '',
+        avatar: post.user ? post.user.avatar : 'https://via.placeholder.com/150',
+      },
+      content: post.content,
+      images: post.images.map(img => `${API_BASE}/${img}`),
+      videos: post.videos.map(vid => `${API_BASE}/${vid}`),
+      timestamp: post.createdAt ? new Date(post.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
+      likes: post.likes.length,
+      likedByCurrentUser: post.likes.includes(uid),
+      comments: post.comments.map(comment => ({
+        id: comment._id,
+        author: {
+          name: comment.user ? comment.user.name : '',
+          avatar: comment.user ? comment.user.avatar : 'https://via.placeholder.com/150',
+        },
+        content: comment.content,
+        timestamp: comment.createdAt ? new Date(comment.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
+        likes: comment.likes.length,
+        likedByCurrentUser: comment.likes.includes(uid),
+        replies: comment.replies.map(reply => ({
+          id: reply._id,
+          author: {
+            name: reply.user ? reply.user.name : '',
+            avatar: reply.user ? reply.user.avatar : 'https://via.placeholder.com/150',
+          },
+          content: reply.content,
+          timestamp: reply.createdAt ? new Date(reply.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
+          likes: reply.likes.length,
+          likedByCurrentUser: reply.likes.includes(uid),
+        })),
+      })),
+    };
+  };
+
   const [posts, setPosts] = useState([
     {
       id: 1,
@@ -355,7 +445,7 @@ const CommunityDashboard = () => {
   // --- Handle Share to Platform ---
   const handleShareToPlatform = (platform) => {
     const post = posts.find(p => p.id === sharePostId);
-    if (!post) return;
+    if (!post || !communityData) return; // Add communityData check
     const postUrl = `${window.location.origin}/community/${communityData.name.replace(/\s+/g, '-')}/post/${post.id}`; // Example URL
     const postText = post.content.substring(0, 100) + '...'; // Shortened content
     let shareUrl = '';
@@ -379,8 +469,7 @@ const CommunityDashboard = () => {
         break;
       case 'email':
         const subject = `Check out this post on TATHYA Community - ${communityData.name}!`;
-        const body = `I thought you might be interested in this post: ${postUrl}
-${postText}`;
+        const body = `I thought you might be interested in this post: ${postUrl}\n${postText}`;
         shareUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         break;
       default:
@@ -393,17 +482,33 @@ ${postText}`;
     setSharePostId(null);
   };
 
+  // --- Handle Join Community ---
+  const handleJoinCommunity = async () => {
+    if (!communityData || !communityData.id) return;
+    try {
+      await joinCommunity(communityData.id);
+      setCommunityData(prev => ({ ...prev, isJoined: true, members: (prev.members || 0) + 1 }));
+      alert(`You have successfully joined the ${communityData.name} community!`);
+    } catch (error) {
+      console.error('Error joining community:', error);
+      alert('Failed to join community. Please try again.');
+    }
+  };
+
   // --- Handle Leave Community ---
-  const handleLeaveCommunity = () => {
+  const handleLeaveCommunity = async () => {
+    if (!communityData || !communityData.id) return;
     const confirmed = window.confirm(`Are you sure you want to leave the ${communityData.name} community? You will lose access to its posts and features.`);
     if (confirmed) {
-      // In a real app, you would trigger an API call to leave the community
-      console.log(`Leaving community: ${communityData.name}`);
-      // Update local state to reflect leaving (simulate)
-      setCommunityData(prev => ({ ...prev, isJoined: false }));
-      alert(`You have left the ${communityData.name} community. You can rejoin anytime from the Community section.`);
-      // Redirect back to the main community list or home
-      navigate('/add-to-community');
+      try {
+        await leaveCommunity(communityData.id);
+        setCommunityData(prev => ({ ...prev, isJoined: false, members: (prev.members || 1) - 1 }));
+        alert(`You have left the ${communityData.name} community. You can rejoin anytime from the Community section.`);
+        navigate('/add-to-community');
+      } catch (error) {
+        console.error('Error leaving community:', error);
+        alert('Failed to leave community. Please try again.');
+      }
     }
   };
 
@@ -444,70 +549,76 @@ ${postText}`;
       </motion.div>
 
       {/* Community Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7 }}
-        className="text-center mb-10"
-      >
-        <motion.div
-          className="mb-6 flex justify-center"
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 15 }}
-        >
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 w-24 h-24 rounded-full flex items-center justify-center shadow-lg">
-            <i className={`fas ${communityData.icon} text-white text-4xl`}></i>
-          </div>
-        </motion.div>
-        <motion.h1
-          className="text-3xl md:text-4xl font-bold text-gray-900 mb-3"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-        >
-          {communityData.name}
-        </motion.h1>
-        <motion.p
-          className="text-lg text-gray-700 max-w-2xl mx-auto mb-4"
-          initial={{ opacity: 0, y: 20 }}
+      {communityData && (
+        <motion.header
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.8 }}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-10"
         >
-          {communityData.description}
-        </motion.p>
-        <motion.div
-          className="flex flex-wrap justify-center gap-2 mb-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7, duration: 0.8 }}
-        >
-          {communityData.tags.map((tag, index) => (
-            <span key={index} className="bg-indigo-100 text-indigo-800 text-sm px-3 py-1 rounded-full">
-              {tag}
-            </span>
-          ))}
-        </motion.div>
-        <motion.div
-          className="flex flex-wrap justify-center gap-4 mb-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9, duration: 0.8 }}
-        >
-          <span className="text-gray-700 flex items-center"><i className="fas fa-users mr-2"></i> {communityData.members.toLocaleString()} Members</span>
-          <span className="text-gray-700 flex items-center"><i className="fas fa-map-marker-alt mr-2"></i> {communityData.region}</span>
-        </motion.div>
-        {/* Leave Community Button - Moved inside header, below stats */}
-        <motion.button
-          onClick={handleLeaveCommunity}
-          className="leave-community-btn bg-red-600 text-white py-2.5 px-5 rounded-lg hover:bg-red-700 transition-colors duration-300 flex items-center justify-center mx-auto mt-4 shadow-md"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.1, duration: 0.5 }}
-        >
-          <i className="fas fa-sign-out-alt mr-2"></i> Leave Community
-        </motion.button>
-      </motion.header>
+          <motion.div
+            className="mb-6 flex justify-center"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+          >
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 w-24 h-24 rounded-full flex items-center justify-center shadow-lg">
+              <i className={`fas ${communityData.icon} text-white text-4xl`}></i>
+            </div>
+          </motion.div>
+          <motion.h1
+            className="text-3xl md:text-4xl font-bold text-gray-900 mb-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+          >
+            {communityData.name}
+          </motion.h1>
+          <motion.p
+            className="text-lg text-gray-700 max-w-2xl mx-auto mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.8 }}
+          >
+            {communityData.description}
+          </motion.p>
+          <motion.div
+            className="flex flex-wrap justify-center gap-2 mb-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7, duration: 0.8 }}
+          >
+            {communityData.tags.map((tag, index) => (
+              <span key={index} className="bg-indigo-100 text-indigo-800 text-sm px-3 py-1 rounded-full">
+                {tag}
+              </span>
+            ))}
+          </motion.div>
+          <motion.div
+            className="flex flex-wrap justify-center gap-4 mb-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9, duration: 0.8 }}
+          >
+            <span className="text-gray-700 flex items-center"><i className="fas fa-users mr-2"></i> {communityData.members.toLocaleString()} Members</span>
+            <span className="text-gray-700 flex items-center"><i className="fas fa-map-marker-alt mr-2"></i> {communityData.region}</span>
+          </motion.div>
+          {/* Join/Leave Community Button */}
+          <motion.button
+            onClick={communityData.isJoined ? handleLeaveCommunity : handleJoinCommunity}
+            className={`py-2.5 px-5 rounded-lg transition-colors duration-300 flex items-center justify-center mx-auto mt-4 shadow-md ${communityData.isJoined ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.1, duration: 0.5 }}
+          >
+            {communityData.isJoined ? (
+              <><i className="fas fa-sign-out-alt mr-2"></i> Leave Community</>
+            ) : (
+              <><i className="fas fa-user-plus mr-2"></i> Join Community</>
+            )}
+          </motion.button>
+        </motion.header>
+      )}
 
       {/* Main Content */}
       <main>
@@ -560,7 +671,7 @@ ${postText}`;
                       />
                       <button
                         type="button"
-                        onClick={() => fileInputImageRef.current.click()}
+                        onClick={() => fileInputImageRef.current && fileInputImageRef.current.click()}
                         className="add-image-btn bg-gray-200 text-gray-700 py-2.5 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300 flex items-center shadow-sm"
                       >
                         <i className="fas fa-image mr-2"></i> Add Images
@@ -578,7 +689,7 @@ ${postText}`;
                       />
                       <button
                         type="button"
-                        onClick={() => fileInputVideoRef.current.click()}
+                        onClick={() => fileInputVideoRef.current && fileInputVideoRef.current.click()}
                         className="add-video-btn bg-gray-200 text-gray-700 py-2.5 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300 flex items-center shadow-sm"
                       >
                         <i className="fas fa-video mr-2"></i> Add Videos

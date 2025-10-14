@@ -332,7 +332,7 @@ const AddToCommunity = () => {
 
     // Navigate to the CommunityDashboard route and pass the community via location state
     // so CommunityDashboard can read it from location.state if needed.
-    navigate(`/community/${community.id}`, { state: { community } });
+    navigate(`/community/${community._id}`, { state: { community } });
   };
 
   // --- Handle Create Post ---
@@ -1088,7 +1088,7 @@ const AddToCommunity = () => {
                       onClick={() => {
                         if (joinedCommunities.includes(community.id)) {
                           // Navigate to community dashboard when already joined
-                          navigate(`/community/${community.id}`, { state: { community } });
+                          navigate(`/community/${community._id}`, { state: { community } });
                         } else {
                           handleJoinLeaveCommunity(community);
                         }

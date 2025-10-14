@@ -1,0 +1,60 @@
+2025-10-14T07:57:12.307Z - [dotenv@17.2.3] injecting env (5) from .env [2m-- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit[0m
+2025-10-14T07:57:12.519Z - Connecting to MongoDB using URI: mongodb://localhost:27017/e-commerce
+2025-10-14T07:57:12.553Z - ✅ Server running in development mode on port 5000
+2025-10-14T07:57:12.557Z - Backend server listening on port 5000
+2025-10-14T07:57:12.303Z - [dotenv@17.2.3] injecting env (5) from .env [2m-- tip: ⚙️  write to custom object with { processEnv: myObject }[0m
+2025-10-14T07:57:12.527Z - Connecting to MongoDB using URI: mongodb://localhost:27017/e-commerce
+2025-10-14T07:57:12.562Z - ✅ Server running in development mode on port 5000
+2025-10-14T07:57:12.565Z - Backend server listening on port 5000
+2025-10-14T07:57:12.577Z - MongoDB Connected: localhost
+2025-10-14T07:57:12.583Z - MongoDB Connected: localhost
+2025-10-14T07:57:17.511Z - [dotenv@17.2.3] injecting env (5) from .env [2m-- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops[0m
+2025-10-14T07:57:17.684Z - Connecting to MongoDB using URI: mongodb://localhost:27017/e-commerce
+2025-10-14T07:57:17.729Z - ✅ Server running in development mode on port 5000
+2025-10-14T07:57:17.730Z - Backend server listening on port 5000
+2025-10-14T07:57:17.745Z - MongoDB Connected: localhost
+2025-10-14T07:57:33.704Z - Incoming request: GET /api/communities/1
+2025-10-14T07:57:33.707Z - Inside optionalProtect middleware
+2025-10-14T07:57:33.708Z - Exiting optionalProtect middleware
+2025-10-14T07:57:33.708Z - Entering getCommunityById for ID: 1
+2025-10-14T07:57:33.714Z - ERROR - Error in getCommunityById: CastError: Cast to ObjectId failed for value "1" (type string) at path "_id" for model "Community"
+2025-10-14T07:57:33.723Z - Incoming request: GET /api/communities/1
+2025-10-14T07:57:33.730Z - Inside optionalProtect middleware
+2025-10-14T07:57:33.735Z - Exiting optionalProtect middleware
+2025-10-14T07:57:33.735Z - Entering getCommunityById for ID: 1
+2025-10-14T07:57:33.736Z - ERROR - Error in getCommunityById: CastError: Cast to ObjectId failed for value "1" (type string) at path "_id" for model "Community"
+2025-10-14T07:59:03.043Z - [dotenv@17.2.3] injecting env (5) from .env [2m-- tip: ⚙️  override existing env vars with { override: true }[0m
+2025-10-14T07:59:03.249Z - Connecting to MongoDB using URI: mongodb://localhost:27017/e-commerce
+2025-10-14T07:59:03.280Z - ✅ Server running in development mode on port 5000
+2025-10-14T07:59:03.280Z - Backend server listening on port 5000
+2025-10-14T07:59:03.294Z - MongoDB Connected: localhost
+2025-10-14T07:59:03.186Z - [dotenv@17.2.3] injecting env (5) from .env [2m-- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops[0m
+2025-10-14T07:59:03.362Z - Connecting to MongoDB using URI: mongodb://localhost:27017/e-commerce
+2025-10-14T07:59:03.393Z - ✅ Server running in development mode on port 5000
+2025-10-14T07:59:03.393Z - Backend server listening on port 5000
+2025-10-14T07:59:03.409Z - MongoDB Connected: localhost
+2025-10-14T07:59:06.180Z - [dotenv@17.2.3] injecting env (5) from .env [2m-- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit[0m
+2025-10-14T07:59:06.358Z - Connecting to MongoDB using URI: mongodb://localhost:27017/e-commerce
+2025-10-14T07:59:06.388Z - ✅ Server running in development mode on port 5000
+2025-10-14T07:59:06.388Z - Backend server listening on port 5000
+2025-10-14T07:59:06.402Z - MongoDB Connected: localhost
+2025-10-14T07:59:06.202Z - [dotenv@17.2.3] injecting env (5) from .env [2m-- tip: 📡 add observability to secrets: https://dotenvx.com/ops[0m
+2025-10-14T07:59:06.371Z - Connecting to MongoDB using URI: mongodb://localhost:27017/e-commerce
+2025-10-14T07:59:06.405Z - ✅ Server running in development mode on port 5000
+2025-10-14T07:59:06.406Z - Backend server listening on port 5000
+2025-10-14T07:59:06.417Z - MongoDB Connected: localhost
+2025-10-14T07:59:11.270Z - [dotenv@17.2.3] injecting env (5) from .env [2m-- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops[0m
+2025-10-14T07:59:11.432Z - Connecting to MongoDB using URI: mongodb://localhost:27017/e-commerce
+2025-10-14T07:59:11.462Z - ✅ Server running in development mode on port 5000
+2025-10-14T07:59:11.462Z - Backend server listening on port 5000
+2025-10-14T07:59:11.472Z - MongoDB Connected: localhost
+2025-10-14T07:59:32.640Z - Incoming request: GET /api/communities/1
+2025-10-14T07:59:32.643Z - Inside optionalProtect middleware
+2025-10-14T07:59:32.644Z - Exiting optionalProtect middleware
+2025-10-14T07:59:32.644Z - Entering getCommunityById for ID: 1
+2025-10-14T07:59:32.645Z - ERROR - Invalid Community ID format: 1
+2025-10-14T07:59:32.651Z - Incoming request: GET /api/communities/1
+2025-10-14T07:59:32.652Z - Inside optionalProtect middleware
+2025-10-14T07:59:32.652Z - Exiting optionalProtect middleware
+2025-10-14T07:59:32.652Z - Entering getCommunityById for ID: 1
+2025-10-14T07:59:32.652Z - ERROR - Invalid Community ID format: 1

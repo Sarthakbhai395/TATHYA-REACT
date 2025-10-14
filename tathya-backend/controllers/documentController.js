@@ -1,9 +1,12 @@
 // tathya-backend/controllers/documentController.js
 const Document = require('../models/Document');
+const Notification = require('../models/Notification');
+const { createNotification } = require('./notificationController');
 const User = require('../models/User');
 const asyncHandler = require('express-async-handler');
 const fs = require('fs'); // For file system operations
 const path = require('path'); // For path manipulation
+const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 
 // @desc    Upload a new document
 // @route   POST /api/documents
@@ -33,13 +36,16 @@ const uploadDocument = asyncHandler(async (req, res) => {
     name: name.trim(),
     type: type.toUpperCase(),
     size: `${(req.file.size / (1024 * 1024)).toFixed(2)} MB`, // Convert bytes to MB
-    path: req.file.path, // Path where file is stored on server
-    // status will default to 'Pending' as defined in the schema
+    path: req.file.filename, // Store only the filename
+    mimeType: req.file.mimetype, // Store the MIME type
+    status: 'Successful',
   });
 
   const createdDocument = await document.save();
 
   if (createdDocument) {
+    // Create a notification for the document upload
+    await createNotification(req.user._id, `New document "${createdDocument.name}" (${createdDocument.type}) uploaded successfully.`, 'document_upload');
     res.status(201).json({
       _id: createdDocument._id,
       name: createdDocument.name,
@@ -131,7 +137,7 @@ const deleteDocument = asyncHandler(async (req, res) => {
       fs.unlinkSync(document.path);
     }
 
-    await document.remove();
+    await Document.deleteOne({ _id: document._id });
     res.json({ message: 'Document removed' });
   } else {
     res.status(404);
@@ -153,17 +159,26 @@ const downloadDocument = asyncHandler(async (req, res) => {
     }
 
     // Check if file exists
-    if (!document.path || !fs.existsSync(document.path)) {
+    const filePath = path.join(UPLOADS_DIR, document.path);
+    if (!fs.existsSync(filePath)) {
       res.status(404);
       throw new Error('Document file not found on server');
     }
 
-    // Set headers for download
-    res.setHeader('Content-Disposition', `attachment; filename="${document.name}.${document.type.toLowerCase()}"`);
-    res.setHeader('Content-Type', 'application/octet-stream'); // Generic binary type
+    const action = req.query.action; // 'download' or 'view'
+
+    let contentDisposition;
+    if (action === 'download') {
+      contentDisposition = `attachment; filename="${document.name}.${document.type.toLowerCase()}"`;
+    } else {
+      contentDisposition = `inline; filename="${document.name}.${document.type.toLowerCase()}"`;
+    }
+
+    res.setHeader('Content-Disposition', contentDisposition);
+    res.setHeader('Content-Type', document.mimeType || 'application/octet-stream'); // Use actual MIME type if available, otherwise generic
 
     // Stream the file
-    const fileStream = fs.createReadStream(document.path);
+    const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
 
     fileStream.on('error', (err) => {

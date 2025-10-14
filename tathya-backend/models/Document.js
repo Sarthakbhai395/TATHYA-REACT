@@ -30,7 +30,7 @@ const documentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Pending', 'Verified', 'Rejected'],
+    enum: ['Pending', 'Verified', 'Rejected', 'Successful'],
     default: 'Pending',
   },
   // Add fields for verification details if needed

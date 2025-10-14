@@ -1,0 +1,107 @@
+{
+  "title": "TATHYA",
+  "subtitle": "Awareness • Support • Safety",
+  "hero": {
+    "heading": "Empowering Students for a Safer Campus Experience",
+    "text": "TATHYA is dedicated to fostering a secure and supportive environment for students. We provide a platform where voices are heard, support is accessible, and safety is paramount. Join us in building a community where every student feels safe, valued, and empowered.",
+    "image": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1400&q=80"
+  },
+  "sections": [
+    {
+      "id": "our-mission",
+      "type": "text-image-right",
+      "heading": "Our Mission: Cultivating a Culture of Awareness and Support",
+      "content": "Our mission is to provide an accessible, confidential, and supportive platform for students to report incidents, receive assistance, and engage with a community that prioritizes safety and well-being. We believe in proactive measures and fostering an environment where every student feels empowered to seek help and contribute to a safer campus.",
+      "image": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1400&q=80"
+    },
+    {
+      "id": "how-it-works",
+      "type": "steps",
+      "heading": "How TATHYA Works: Your Path to Safety and Support",
+      "content": "TATHYA connects students, moderators, and resources to make campuses safer. Report incidents, attach evidence, and get routed to moderators and support resources. Our team triages reports and helps connect survivors to counseling, legal aid, and campus services.",
+      "steps": [
+        "Create an account or continue anonymously to ensure your privacy.",
+        "Submit a detailed report with optional attachments for comprehensive review.",
+        "Track your report's progress and receive timely updates.",
+        "Access a wealth of community resources and expert guidance."
+      ]
+    },
+    {
+      "id": "our-vision",
+      "type": "text-image-left",
+      "heading": "Our Vision: A Future Where Every Campus is a Safe Haven",
+      "content": "We envision a future where all educational institutions are safe havens, free from harassment, discrimination, and violence. TATHYA aims to be the leading platform for campus safety, continuously innovating to meet the evolving needs of students and institutions, and promoting a global culture of respect and accountability.",
+      "image": "https://images.unsplash.com/photo-1509062522224-37565777ad55?auto=format&fit=crop&w=1400&q=80"
+    },
+    {
+      "id": "core-values",
+      "type": "list",
+      "heading": "Our Core Values: Guiding Principles of TATHYA",
+      "items": [
+        "Confidentiality: Ensuring privacy and trust in every interaction.",
+        "Empathy: Approaching every situation with understanding and compassion.",
+        "Accessibility: Making support and resources available to all.",
+        "Action-oriented Response: Prompt and effective resolution of concerns.",
+        "Community-driven Moderation: Empowering the community to foster a safe environment."
+      ]
+    },
+    {
+      "id": "our-team",
+      "type": "team",
+      "heading": "Meet Our Dedicated Team",
+      "members": [
+        {
+          "name": "Priya Sharma",
+          "role": "Founder & CEO",
+          "bio": "Priya is a passionate advocate for student safety and well-being. With a background in social work and technology, she founded TATHYA to bridge the gap between students and support systems.",
+          "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80"
+        },
+        {
+          "name": "Rahul Verma",
+          "role": "Chief Technology Officer",
+          "bio": "Rahul leads the technical vision and development of TATHYA. His expertise in secure platforms ensures a robust and reliable system for all users.",
+          "image": "https://images.unsplash.com/photo-1507003211169-e695c6edd65d?auto=format&fit=crop&w=300&q=80"
+        },
+        {
+          "name": "Anjali Singh",
+          "role": "Head of Community Engagement",
+          "bio": "Anjali is responsible for building and nurturing the TATHYA community. She works tirelessly to ensure students feel heard and supported.",
+          "image": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80"
+        }
+      ]
+    },
+    {
+      "id": "testimonials",
+      "type": "testimonials",
+      "heading": "What Our Community Says",
+      "testimonials": [
+        {
+          "quote": "TATHYA provided me with the support I needed during a difficult time. The platform is easy to use and truly makes a difference.",
+          "author": "Aisha K., Student"
+        },
+        {
+          "quote": "As a moderator, I've seen firsthand how TATHYA empowers students and helps create a safer campus environment.",
+          "author": "Dr. Sanjay M., University Moderator"
+        }
+      ]
+    },
+    {
+      "id": "get-involved",
+      "type": "cta",
+      "heading": "Get Involved: Be a Part of the Change",
+      "content": "Join as a moderator, volunteer for outreach, or contribute resources. Institutions can partner with TATHYA for campus-wide awareness and training programs. Your involvement helps us create a stronger, safer community.",
+      "cta": {
+        "label": "Join Our Community",
+        "href": "/add-to-community"
+      }
+    },
+    {
+      "id": "contact-us",
+      "type": "contact",
+      "heading": "Contact Us",
+      "content": "Have questions or need assistance? Reach out to us through our contact form or connect with us on social media. We're here to help!",
+      "email": "support@tathya.com",
+      "phone": "+91 12345 67890"
+    }
+  ]
+}

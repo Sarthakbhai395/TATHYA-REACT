@@ -16,21 +16,13 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Check if user is already logged in (demo logic)
+  // Check if we arrived here from signup to prefill email
   useEffect(() => {
-    // If already logged in, redirect immediately
-    const userData = JSON.parse(localStorage.getItem('tathya_user') || 'null');
-    if (userData) {
-      if (userData.role === 'moderator') navigate('/moderator');
-      else navigate('/user-dashboard');
-      return;
-    }
-
     // If we arrived here from signup, prefill the email field
     if (location && location.state && location.state.email) {
       setFormData(prev => ({ ...prev, email: location.state.email }));
     }
-  }, [navigate, location]);
+  }, [location]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -78,12 +70,8 @@ const Login = () => {
       // Save auth info
       authService.setAuthStorage(res);
       setIsSubmitting(false);
-      // Redirect based on role
-      if (res.role === 'moderator') {
-        navigate('/moderator');
-      } else {
-        navigate('/user-dashboard');
-      }
+      // Redirect to home page after successful login
+      navigate('/');
     } catch (err) {
       setIsSubmitting(false);
       setErrors({ general: err.message || 'Invalid email or password.' });
@@ -283,7 +271,7 @@ const Login = () => {
       </motion.div>
 
       {/* Liquid Glass Card Styles */}
-      <style jsx>{`
+      <style>{`
         /* Liquid Glass Card */
         .liquid-glass-card {
           position: relative;

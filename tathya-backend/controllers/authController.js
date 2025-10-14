@@ -2,8 +2,101 @@
 const User = require('../models/User');
 const { generateToken } = require('../utils/jwtUtils');
 const asyncHandler = require('express-async-handler');
+const upload = require('../middleware/uploadMiddleware');
+const twilio = require('twilio');
+const crypto = require('crypto');
 
-// @desc    Register a new user
+// Temporary store for verification codes (in a real app, use a database or Redis)
+const verificationCodes = {};
+
+const sendVerificationSms = asyncHandler(async (req, res) => {
+  const { phoneNumber } = req.body;
+
+  if (!phoneNumber) {
+    res.status(400);
+    throw new Error('Please provide a phone number');
+  }
+
+  // Check if user exists with the provided phone number
+  // const user = await User.findOne({ phone: phoneNumber });
+  // if (!user) {
+  //   res.status(404);
+  //   throw new Error('User not found with this phone number');
+  // }
+
+  // Generate a 6-digit verification code
+  const verificationCode = crypto.randomInt(100000, 999999).toString();
+
+  // Store the verification code temporarily
+  verificationCodes[phoneNumber] = verificationCode;
+
+  // Send SMS using Twilio
+  const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
+  try {
+    await client.messages.create({
+      body: `Your verification code is: ${verificationCode}`,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: phoneNumber,
+    });
+    res.status(200).json({ message: 'Verification SMS sent successfully' });
+  } catch (error) {
+    console.error('Error sending SMS:', error);
+    res.status(500);
+    throw new Error('Failed to send verification SMS');
+  }
+});
+
+const verifySmsCode = asyncHandler(async (req, res) => {
+  const { phoneNumber, code } = req.body;
+
+  if (!phoneNumber || !code) {
+    res.status(400);
+    throw new Error('Please provide phone number and verification code');
+  }
+
+  const storedCode = verificationCodes[phoneNumber];
+
+  if (storedCode && storedCode === code) {
+    // Code is valid, clear it from temporary storage
+    delete verificationCodes[phoneNumber];
+    res.status(200).json({ message: 'Verification code verified successfully' });
+  } else {
+    res.status(400);
+    throw new Error('Invalid or expired verification code');
+  }
+});
+
+const resetPasswordViaSms = asyncHandler(async (req, res) => {
+  const { phoneNumber, code, newPassword } = req.body;
+
+  if (!phoneNumber || !code || !newPassword) {
+    res.status(400);
+    throw new Error('Please provide phone number, verification code, and new password');
+  }
+
+  const storedCode = verificationCodes[phoneNumber];
+
+  if (storedCode && storedCode === code) {
+    const user = await User.findOne({ phone: phoneNumber });
+
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    user.password = newPassword; // Mongoose pre-save hook will hash this
+    await user.save();
+
+    delete verificationCodes[phoneNumber]; // Clear the verification code
+
+    res.status(200).json({ message: 'Password reset successfully' });
+  } else {
+    res.status(400);
+    throw new Error('Invalid or expired verification code');
+  }
+});
+
 // @route   POST /api/auth/signup
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
@@ -61,7 +154,9 @@ const registerUser = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/login
 // @access  Public
 const loginUser = asyncHandler(async (req, res) => {
+  console.log('Attempting login...');
   const { email, password } = req.body;
+  console.log(`Received email: ${email}, password: ${password ? '[PROVIDED]' : '[NOT PROVIDED]'}`);
 
   // Basic validation
   if (!email || !password) {
@@ -71,8 +166,12 @@ const loginUser = asyncHandler(async (req, res) => {
 
   // Find user by email
   const user = await User.findOne({ email });
+  console.log('User found:', user ? user.email : 'None');
 
   if (user && (await user.matchPassword(password))) {
+    console.log('Password matched. Generating token...');
+    const token = generateToken(user._id);
+    console.log('Token generated:', token ? '[GENERATED]' : '[FAILED]');
     res.json({
       _id: user._id,
       fullName: user.fullName,
@@ -81,9 +180,10 @@ const loginUser = asyncHandler(async (req, res) => {
       isVerified: user.isVerified,
       aadharVerified: user.aadharVerified,
       role: user.role,
-      token: generateToken(user._id),
+      token: token,
     });
   } else {
+    console.log('Invalid email or password.');
     res.status(401);
     throw new Error('Invalid email or password');
   }
@@ -129,7 +229,9 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     user.gradYear = req.body.gradYear || user.gradYear;
     user.skills = req.body.skills || user.skills;
     user.summary = req.body.summary || user.summary;
-    // Handle avatar update if needed (requires file upload middleware)
+    if (req.file) {
+      user.avatar = `/uploads/${req.file.filename}`;
+    }
 
     const updatedUser = await user.save();
 
@@ -161,4 +263,7 @@ module.exports = {
   logoutUser,
   getUserProfile,
   updateUserProfile,
+  sendVerificationSms,
+  verifySmsCode,
+  resetPasswordViaSms,
 };

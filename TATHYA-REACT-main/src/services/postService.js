@@ -29,7 +29,13 @@ async function createPost({ title, content, communityId = '', isAnonymous = true
 }
 
 async function fetchPostsByCommunity(communityId, page = 1) {
-  const res = await fetch(`${API_BASE}/posts/community/${communityId}?pageNumber=${page}`);
+  const headers = getAuthHeaders();
+  const res = await fetch(`${API_BASE}/posts/community/${communityId}?pageNumber=${page}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers
+    }
+  });
   if (!res.ok) {
     const err = await res.text();
     throw new Error(err || 'Failed to fetch posts');
@@ -38,7 +44,13 @@ async function fetchPostsByCommunity(communityId, page = 1) {
 }
 
 async function fetchRecentPosts(page = 1) {
-  const res = await fetch(`${API_BASE}/posts?pageNumber=${page}`);
+  const headers = getAuthHeaders();
+  const res = await fetch(`${API_BASE}/posts?pageNumber=${page}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers
+    }
+  });
   if (!res.ok) {
     const err = await res.text();
     throw new Error(err || 'Failed to fetch recent posts');
@@ -46,4 +58,62 @@ async function fetchRecentPosts(page = 1) {
   return res.json();
 }
 
-export default { createPost, fetchPostsByCommunity, fetchRecentPosts };
+async function likePost(postId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`${API_BASE}/posts/${postId}/like`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || 'Failed to like post');
+  }
+  return res.json();
+}
+
+async function deletePost(postId) {
+  const headers = getAuthHeaders();
+  const res = await fetch(`${API_BASE}/posts/${postId}`, {
+    method: 'DELETE',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || 'Failed to delete post');
+  }
+  return res.json();
+}
+
+async function addComment(postId, content, replyTo = null) {
+  const headers = getAuthHeaders();
+  const body = { content };
+  if (replyTo) body.replyTo = replyTo;
+  const res = await fetch(`${API_BASE}/posts/${postId}/comments`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || 'Failed to add comment');
+  }
+  return res.json();
+}
+
+async function likeComment(postId, commentId, replyId = null) {
+  const headers = getAuthHeaders();
+  const url = replyId
+    ? `${API_BASE}/posts/${postId}/comments/${commentId}/replies/${replyId}/like`
+    : `${API_BASE}/posts/${postId}/comments/${commentId}/like`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || 'Failed to like comment');
+  }
+  return res.json();
+}
+
+export default { createPost, fetchPostsByCommunity, fetchRecentPosts, likePost, deletePost, addComment, likeComment };

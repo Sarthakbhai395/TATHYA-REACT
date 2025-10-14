@@ -10,16 +10,36 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const check = () => setIsAuthenticated(localStorage.getItem('tathya-is-authenticated') === 'true');
+    const check = () => {
+      const isAuth = localStorage.getItem('tathya-is-authenticated') === 'true';
+      console.log('Auth check:', isAuth);
+      setIsAuthenticated(isAuth);
+    };
     check();
+    // Listen for storage changes (when user logs in/out in another tab)
     window.addEventListener('storage', check);
-    return () => window.removeEventListener('storage', check);
+    // Also listen for custom events when auth state changes in same tab
+    window.addEventListener('authStateChanged', check);
+    return () => {
+      window.removeEventListener('storage', check);
+      window.removeEventListener('authStateChanged', check);
+    };
   }, []);
 
   const handleLogout = () => {
     authService.clearAuthStorage();
     setIsAuthenticated(false);
+    navigate('/');
+  };
+
+  const handleLoginClick = () => {
+    console.log('Login button clicked - navigating to /login');
     navigate('/login');
+  };
+
+  const handleDashboardClick = () => {
+    console.log('Dashboard button clicked - navigating to /user-dashboard');
+    navigate('/user-dashboard');
   };
 
   return (
@@ -40,17 +60,33 @@ const Navbar = () => {
             <Link to="/" className="text-sm text-gray-200 hover:text-white">Home</Link>
             <Link to="/about" className="text-sm text-gray-200 hover:text-white">About</Link>
             <Link to="/contact" className="text-sm text-gray-200 hover:text-white">Contact</Link>
+            <Link to="/add-to-community" className="text-sm text-gray-200 hover:text-white">Join Community</Link>
             <Link to="/moderator" className="text-sm text-gray-200 hover:text-white">Moderator</Link>
 
             {!isAuthenticated ? (
               <>
-                <Link to="/login" className="px-3 py-2 rounded bg-transparent text-sm text-gray-200 hover:text-white">Login</Link>
+                <button 
+                  onClick={handleLoginClick}
+                  className="px-3 py-2 rounded bg-transparent text-sm text-gray-200 hover:text-white transition-colors duration-200 cursor-pointer border border-gray-600 hover:border-gray-400"
+                >
+                  Login
+                </button>
                 <Link to="/signup" className="px-3 py-2 rounded bg-blue-600 text-sm text-white hover:bg-blue-700">Sign up</Link>
               </>
             ) : (
               <>
-                <Link to="/user-dashboard" className="px-3 py-2 rounded bg-blue-600 text-sm text-white hover:bg-blue-700">Dashboard</Link>
-                <button onClick={handleLogout} className="px-3 py-2 rounded text-sm text-white bg-red-600 hover:bg-red-700">Logout</button>
+                <button 
+                  onClick={handleDashboardClick}
+                  className="px-3 py-2 rounded bg-blue-600 text-sm text-white hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
+                >
+                  Dashboard
+                </button>
+                <button 
+                  onClick={handleLogout} 
+                  className="px-3 py-2 rounded text-sm text-white bg-red-600 hover:bg-red-700 transition-colors duration-200 cursor-pointer"
+                >
+                  Logout
+                </button>
               </>
             )}
           </div>
@@ -69,17 +105,44 @@ const Navbar = () => {
             <Link to="/" onClick={() => setIsMenuOpen(false)} className="block">Home</Link>
             <Link to="/about" onClick={() => setIsMenuOpen(false)} className="block">About</Link>
             <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="block">Contact</Link>
+            <Link to="/add-to-community" onClick={() => setIsMenuOpen(false)} className="block">Join Community</Link>
             <Link to="/moderator" onClick={() => setIsMenuOpen(false)} className="block">Moderator</Link>
 
             {!isAuthenticated ? (
               <>
-                <Link to="/login" onClick={() => setIsMenuOpen(false)} className="block">Login</Link>
-                <Link to="/signup" onClick={() => setIsMenuOpen(false)} className="block">Sign up</Link>
+                <button 
+                  onClick={() => {
+                    console.log('Mobile login button clicked');
+                    handleLoginClick();
+                    setIsMenuOpen(false);
+                  }} 
+                  className="block py-2 px-3 hover:bg-gray-100 rounded transition-colors duration-200 text-left w-full"
+                >
+                  Login
+                </button>
+                <Link to="/signup" onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 hover:bg-gray-100 rounded transition-colors duration-200">Sign up</Link>
               </>
             ) : (
               <>
-                <Link to="/user-dashboard" onClick={() => setIsMenuOpen(false)} className="block">Dashboard</Link>
-                <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="block text-left text-red-600">Logout</button>
+                <button 
+                  onClick={() => {
+                    console.log('Mobile dashboard button clicked');
+                    handleDashboardClick();
+                    setIsMenuOpen(false);
+                  }} 
+                  className="block py-2 px-3 hover:bg-gray-100 rounded transition-colors duration-200 text-left w-full text-blue-600"
+                >
+                  Dashboard
+                </button>
+                <button 
+                  onClick={() => { 
+                    handleLogout(); 
+                    setIsMenuOpen(false); 
+                  }} 
+                  className="block py-2 px-3 hover:bg-gray-100 rounded transition-colors duration-200 text-left w-full text-red-600"
+                >
+                  Logout
+                </button>
               </>
             )}
           </div>

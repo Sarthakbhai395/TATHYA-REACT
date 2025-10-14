@@ -1,7 +1,12 @@
 // tathya-backend/controllers/communityController.js
 const Community = require('../models/Community');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const asyncHandler = require('express-async-handler');
+const fs = require('fs');
+const path = require('path');
+
+const accessLogStream = fs.createWriteStream(path.join(__dirname, '../access.log'), { flags: 'a' });
 
 // @desc    Create a new community
 // @route   POST /api/communities
@@ -85,16 +90,40 @@ const getCommunities = asyncHandler(async (req, res) => {
 // @route   GET /api/communities/:id
 // @access  Public
 const getCommunityById = asyncHandler(async (req, res) => {
-  const community = await Community.findById(req.params.id).populate('members', 'fullName email avatar').populate('moderators', 'fullName email avatar');
+  console.log('Entering getCommunityById for ID:', req.params.id);
 
-  if (community) {
-    res.json(community);
-  } else {
-    res.status(404);
-    throw new Error('Community not found');
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    console.error('Invalid Community ID format:', req.params.id);
+    res.status(400);
+    throw new Error('Invalid Community ID format');
+  }
+
+  try {
+    let community = await Community.findById(req.params.id)
+      .populate('members', 'fullName email avatar')
+      .populate('moderators', 'fullName email avatar');
+
+    if (!community) {
+      console.log('Community not found for ID:', req.params.id);
+      res.status(404);
+      throw new Error('Community not found');
+    }
+
+    let isJoined = false;
+    if (req.user) {
+      isJoined = community.members.some(member => member._id.equals(req.user._id));
+      console.log('User', req.user.id, 'isJoined:', isJoined);
+    }
+
+    console.log('Community object before response:', community);
+    res.json({ ...community.toObject(), isJoined });
+  } catch (error) {
+    console.error('Error in getCommunityById:', error);
+    res.status(500).json({ message: error.message });
   }
 });
 
+module.exports = { getCommunityById };
 // @desc    Update community details
 // @route   PUT /api/communities/:id
 // @access  Private/Moderator
