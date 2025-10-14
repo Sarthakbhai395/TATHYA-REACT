@@ -6,6 +6,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const socketIo = require('socket.io');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -24,14 +26,104 @@ const aboutRoutes = require('./routes/about');
 const resumeRoutes = require('./routes/resume');
 const activityRoutes = require('./routes/activities');
 const notificationRoutes = require('./routes/notifications');
-// Import other routes as you create them
-// const userRoutes = require('./routes/users');
-// const notificationRoutes = require('./routes/notifications');
+const moderatorRoutes = require('./routes/moderator');
+const messageRoutes = require('./routes/messages');
 
 // Import utility functions for error handling
 const { notFound, errorHandler } = require('./utils/errorHandler');
 
 const app = express();
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// CORS configuration for REST API
+const allowedOrigins = [
+  process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3001',
+  'http://localhost:3002',
+].filter(Boolean);
+
+// Apply CORS middleware to Express app
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
+// Initialize Socket.IO with proper CORS configuration
+const io = socketIo(server, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
+});
+
+// Store connected users
+const connectedUsers = new Map();
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  // Register user
+  socket.on('register', (userId) => {
+    connectedUsers.set(userId, socket.id);
+    console.log(`User ${userId} registered with socket ${socket.id}`);
+  });
+  
+  // Handle sending message
+  socket.on('send_message', async (data) => {
+    try {
+      const { from, to, content } = data;
+      
+      // Save message to database
+      const Message = require('./models/Message');
+      const message = new Message({
+        from,
+        to,
+        content
+      });
+      
+      const savedMessage = await message.save();
+      
+      // Populate sender and recipient info
+      await savedMessage.populate('from', 'fullName avatar role');
+      await savedMessage.populate('to', 'fullName avatar role');
+      
+      // Emit message to recipient if online
+      const recipientSocketId = connectedUsers.get(to);
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit('receive_message', savedMessage);
+      }
+      
+      // Emit message to sender for confirmation
+      const senderSocketId = connectedUsers.get(from);
+      if (senderSocketId) {
+        io.to(senderSocketId).emit('message_sent', savedMessage);
+      }
+      
+      console.log('Message sent:', savedMessage);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  });
+  
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    // Remove user from connected users
+    for (let [userId, socketId] of connectedUsers.entries()) {
+      if (socketId === socket.id) {
+        connectedUsers.delete(userId);
+        break;
+      }
+    }
+  });
+});
 
 // Connect to MongoDB database
 connectDB();
@@ -45,24 +137,6 @@ app.use(
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
-
-// CORS: Enable Cross-Origin Resource Sharing (configure origin for production)
-// Allow frontend (Vite dev server) to access backend during development
-const allowedOrigins = [
-  process.env.CLIENT_ORIGIN || 'http://localhost:3000',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:3001',
-].filter(Boolean);
-
-const corsOptions = {
-  origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
 
 // Body Parser: Parse incoming JSON and URL-encoded payloads
 // Increase limits if you expect large file uploads
@@ -108,6 +182,7 @@ app.use('/api/communities', communityRoutes);
 
 // Mount post routes under /api/posts
 app.use('/api/posts', postRoutes);
+
 // Chat (AI) endpoint (simple echo + persistence)
 // Expose under /api/chat so frontend can use API_BASE + '/chat'
 app.use('/api/chat', chatRoutes);
@@ -122,9 +197,11 @@ app.use('/api/resume', resumeRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Mount other routes as needed
-// app.use('/api/users', userRoutes);
-// app.use('/api/notifications', notificationRoutes);
+// Moderator routes
+app.use('/api/moderator', moderatorRoutes);
+
+// User messages routes
+app.use('/api/messages', messageRoutes);
 
 // --- Error Handling Middleware ---
 // Catch 404 errors for undefined routes
@@ -136,7 +213,7 @@ app.use(errorHandler);
 // --- Start Server ---
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`✅ Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
   console.log(`Backend server listening on port ${PORT}`);
 });

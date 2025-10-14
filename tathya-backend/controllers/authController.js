@@ -17,42 +17,190 @@ const sendVerificationSms = asyncHandler(async (req, res) => {
     throw new Error('Please provide a phone number');
   }
 
-  // Check if user exists with the provided phone number
-  // const user = await User.findOne({ phone: phoneNumber });
-  // if (!user) {
-  //   res.status(404);
-  //   throw new Error('User not found with this phone number');
-  // }
+  // Normalize and validate phone number for Indian format
+  let normalizedPhone = phoneNumber.trim();
+  
+  // Handle Indian phone numbers
+  if (normalizedPhone.startsWith('0')) {
+    // Remove leading zero
+    normalizedPhone = normalizedPhone.substring(1);
+  }
+  
+  if (normalizedPhone.startsWith('91') && normalizedPhone.length === 12) {
+    // It's already in international format without +
+    normalizedPhone = `+${normalizedPhone}`;
+  } else if (normalizedPhone.startsWith('+91') && normalizedPhone.length === 13) {
+    // It's already in correct international format
+    // Keep as is
+  } else if (normalizedPhone.length === 10 && /^\d{10}$/.test(normalizedPhone)) {
+    // It's a 10-digit Indian number, convert to international format
+    normalizedPhone = `+91${normalizedPhone}`;
+  } else if (!normalizedPhone.startsWith('+')) {
+    // Add +91 prefix for Indian numbers without +
+    normalizedPhone = `+91${normalizedPhone}`;
+  }
+
+  // Validate phone number format (supporting international format)
+  const phoneRegex = /^\+[1-9]\d{1,14}$/;
+  if (!phoneRegex.test(normalizedPhone)) {
+    res.status(400);
+    throw new Error('Invalid phone number format. Please use a valid phone number (e.g., 9876543210 or +919876543210)');
+  }
 
   // Generate a 6-digit verification code
   const verificationCode = crypto.randomInt(100000, 999999).toString();
 
   // Store the verification code temporarily
-  verificationCodes[phoneNumber] = verificationCode;
+  verificationCodes[normalizedPhone] = verificationCode;
 
-  // Send SMS using Twilio
-  const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  // Check if we're in development mode and missing Twilio credentials
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const hasValidTwilioConfig = process.env.TWILIO_ACCOUNT_SID && 
+                               process.env.TWILIO_AUTH_TOKEN && 
+                               process.env.TWILIO_PHONE_NUMBER &&
+                               process.env.TWILIO_ACCOUNT_SID.trim() !== '' &&
+                               process.env.TWILIO_AUTH_TOKEN.trim() !== '' &&
+                               process.env.TWILIO_PHONE_NUMBER.trim() !== '';
+
+  // If we're in development and missing Twilio config, use fallback
+  if (isDevelopment && !hasValidTwilioConfig) {
+    console.warn('Twilio configuration is missing or incomplete. Using development fallback.');
+    console.log(`[DEV MODE] Verification code for ${normalizedPhone}: ${verificationCode}`);
+    return res.status(200).json({ 
+      message: 'Verification code generated (check server logs in dev mode)',
+      devCode: verificationCode
+    });
+  }
+
+  // If we're in production and missing Twilio config, throw error
+  if (!isDevelopment && !hasValidTwilioConfig) {
+    console.error('Missing Twilio configuration in production environment');
+    res.status(500);
+    throw new Error('SMS service is currently unavailable. Please contact support.');
+  }
 
   try {
-    await client.messages.create({
-      body: `Your verification code is: ${verificationCode}`,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: phoneNumber,
-    });
-    res.status(200).json({ message: 'Verification SMS sent successfully' });
+    // Send message using Twilio (try WhatsApp first, fallback to SMS)
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    
+    // Format WhatsApp number (whatsapp:+91XXXXXXXXXX)
+    const whatsappNumber = `whatsapp:${normalizedPhone}`;
+    const smsNumber = normalizedPhone;
+    
+    // Try WhatsApp first
+    try {
+      console.log(`Attempting to send WhatsApp message to ${whatsappNumber}`);
+      await client.messages.create({
+        body: `Your verification code is: ${verificationCode}\n\nThis message is from TATHYA App.`,
+        from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+        to: whatsappNumber,
+      });
+      console.log(`✅ Verification code sent via WhatsApp to ${normalizedPhone}`);
+      return res.status(200).json({ 
+        message: 'Verification code sent successfully via WhatsApp',
+        method: 'whatsapp',
+        devCode: isDevelopment ? verificationCode : undefined
+      });
+    } catch (whatsappError) {
+      console.warn('⚠️ WhatsApp sending failed:', whatsappError.message);
+      console.warn('Error code:', whatsappError.code);
+      console.warn('Error status:', whatsappError.status);
+      
+      // Check if it's a WhatsApp-specific error
+      if (whatsappError.code === 63016) {
+        // WhatsApp requires users to opt-in first
+        console.log('WhatsApp requires user opt-in. Sending SMS instead.');
+        // Fallback to SMS
+        await client.messages.create({
+          body: `Your verification code is: ${verificationCode}`,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: smsNumber,
+        });
+        
+        console.log(`✅ Verification code sent via SMS to ${normalizedPhone}`);
+        return res.status(200).json({ 
+          message: 'Verification SMS sent successfully (WhatsApp requires opt-in)',
+          method: 'sms',
+          devCode: isDevelopment ? verificationCode : undefined
+        });
+      } else {
+        // Other WhatsApp error, try SMS
+        console.log('Trying SMS fallback...');
+        await client.messages.create({
+          body: `Your verification code is: ${verificationCode}`,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: smsNumber,
+        });
+        
+        console.log(`✅ Verification code sent via SMS to ${normalizedPhone}`);
+        return res.status(200).json({ 
+          message: 'Verification SMS sent successfully',
+          method: 'sms',
+          devCode: isDevelopment ? verificationCode : undefined
+        });
+      }
+    }
   } catch (error) {
-    console.error('Error sending SMS:', error);
-    res.status(500);
-    throw new Error('Failed to send verification SMS');
+    console.error('❌ Error sending message:', error.message);
+    console.error('Twilio Error Code:', error.code);
+    console.error('Twilio Error Status:', error.status);
+    console.error('Full Error Object:', JSON.stringify(error, null, 2));
+    
+    // Provide more specific error messages based on Twilio error codes
+    if (error.code === 20003 || (error.status === 401 && error.message.includes('Authenticate'))) {
+      // Twilio authentication error - provide a development fallback
+      console.warn('Twilio authentication failed. Using development fallback.');
+      console.log(`[DEV MODE] Verification code for ${normalizedPhone}: ${verificationCode}`);
+      return res.status(200).json({ 
+        message: 'Verification code generated (check server logs in dev mode)',
+        devCode: isDevelopment ? verificationCode : undefined
+      });
+    } else if (error.code === 21211) {
+      res.status(400);
+      throw new Error('Failed to send verification message: Invalid phone number format.');
+    } else if (error.status === 400) {
+      res.status(400);
+      throw new Error(`Failed to send verification message: ${error.message}`);
+    } else {
+      // For any other error, provide a fallback in development mode
+      if (isDevelopment) {
+        console.warn('Twilio error occurred. Using development fallback.');
+        console.log(`[DEV MODE] Verification code for ${normalizedPhone}: ${verificationCode}`);
+        return res.status(200).json({ 
+          message: 'Verification code generated (check server logs in dev mode)',
+          devCode: verificationCode
+        });
+      } else {
+        res.status(500);
+        throw new Error(`Failed to send verification message: ${error.message}`);
+      }
+    }
   }
 });
 
 const verifySmsCode = asyncHandler(async (req, res) => {
-  const { phoneNumber, code } = req.body;
+  let { phoneNumber, code } = req.body;
 
   if (!phoneNumber || !code) {
     res.status(400);
     throw new Error('Please provide phone number and verification code');
+  }
+
+  // Normalize phone number (same logic as in sendVerificationSms)
+  phoneNumber = phoneNumber.trim();
+  
+  if (phoneNumber.startsWith('0')) {
+    phoneNumber = phoneNumber.substring(1);
+  }
+  
+  if (phoneNumber.startsWith('91') && phoneNumber.length === 12) {
+    phoneNumber = `+${phoneNumber}`;
+  } else if (phoneNumber.startsWith('+91') && phoneNumber.length === 13) {
+    // Keep as is
+  } else if (phoneNumber.length === 10 && /^\d{10}$/.test(phoneNumber)) {
+    phoneNumber = `+91${phoneNumber}`;
+  } else if (!phoneNumber.startsWith('+')) {
+    phoneNumber = `+91${phoneNumber}`;
   }
 
   const storedCode = verificationCodes[phoneNumber];
@@ -68,11 +216,28 @@ const verifySmsCode = asyncHandler(async (req, res) => {
 });
 
 const resetPasswordViaSms = asyncHandler(async (req, res) => {
-  const { phoneNumber, code, newPassword } = req.body;
+  let { phoneNumber, code, newPassword } = req.body;
 
   if (!phoneNumber || !code || !newPassword) {
     res.status(400);
     throw new Error('Please provide phone number, verification code, and new password');
+  }
+
+  // Normalize phone number (same logic as in sendVerificationSms)
+  phoneNumber = phoneNumber.trim();
+  
+  if (phoneNumber.startsWith('0')) {
+    phoneNumber = phoneNumber.substring(1);
+  }
+  
+  if (phoneNumber.startsWith('91') && phoneNumber.length === 12) {
+    phoneNumber = `+${phoneNumber}`;
+  } else if (phoneNumber.startsWith('+91') && phoneNumber.length === 13) {
+    // Keep as is
+  } else if (phoneNumber.length === 10 && /^\d{10}$/.test(phoneNumber)) {
+    phoneNumber = `+91${phoneNumber}`;
+  } else if (!phoneNumber.startsWith('+')) {
+    phoneNumber = `+91${phoneNumber}`;
   }
 
   const storedCode = verificationCodes[phoneNumber];
@@ -230,7 +395,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     user.skills = req.body.skills || user.skills;
     user.summary = req.body.summary || user.summary;
     if (req.file) {
-      user.avatar = `/uploads/${req.file.filename}`;
+      user.avatar = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
     }
 
     const updatedUser = await user.save();

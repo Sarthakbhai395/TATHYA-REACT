@@ -100,6 +100,10 @@ const postSchema = new mongoose.Schema({
     type: Boolean,
     default: true, // Admin/moderator can hide posts if necessary
   },
+  approved: {
+    type: Boolean,
+    default: false, // Posts need to be approved by moderators
+  },
 });
 
 // Middleware to update `updatedAt` on save

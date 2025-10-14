@@ -69,15 +69,31 @@ export async function login(data) {
 
 export async function getProfile() {
   const token = localStorage.getItem('tathya_token');
+  if (!token) {
+    throw new Error('No token found');
+  }
+  
   const res = await fetch(`${API_BASE}/auth/profile`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Authorization: `Bearer ${token}`,
     },
   });
+  
   const json = await res.json();
-  if (!res.ok) throw new Error(json.message || 'Failed to fetch profile');
+  if (!res.ok) {
+    // If unauthorized, clear auth storage
+    if (res.status === 401) {
+      localStorage.removeItem('tathya_user');
+      localStorage.removeItem('tathya_token');
+      localStorage.removeItem('tathya-is-authenticated');
+      localStorage.removeItem('user-profile-data');
+      // Dispatch custom event to notify navbar of auth state change
+      window.dispatchEvent(new CustomEvent('authStateChanged'));
+    }
+    throw new Error(json.message || 'Failed to fetch profile');
+  }
   return json;
 }
 

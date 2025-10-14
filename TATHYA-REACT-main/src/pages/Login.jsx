@@ -70,8 +70,14 @@ const Login = () => {
       // Save auth info
       authService.setAuthStorage(res);
       setIsSubmitting(false);
-      // Redirect to home page after successful login
-      navigate('/');
+      
+      // Redirect based on user role
+      if (res.role === 'moderator') {
+        navigate('/moderator-dashboard');
+      } else {
+        // Redirect to user dashboard for regular users
+        navigate('/user-dashboard');
+      }
     } catch (err) {
       setIsSubmitting(false);
       setErrors({ general: err.message || 'Invalid email or password.' });

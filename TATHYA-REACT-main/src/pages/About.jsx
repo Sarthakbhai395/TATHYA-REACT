@@ -703,12 +703,8 @@ const About = () => {
               ))}
             </div>
             <div className="text-center mt-8" data-aos="fade-up">
-              <Link to="/create-post" className="btn btn-primary px-6 py-3 bg-blue-600 text-white border border-blue-600 rounded-md hover:bg-blue-700 hover:border-blue-700 transition-colors duration-300 transform hover:-translate-y-1 hover:shadow-lg mr-4">
-                Share Your Story
-              </Link>
-              <Link to="/community-feed" className="btn btn-outline px-6 py-3 text-blue-600 border border-blue-600 rounded-md hover:bg-blue-600 hover:text-white transition-colors duration-300 transform hover:-translate-y-1 hover:shadow-lg">
-                View All Posts
-              </Link>
+              
+              
             </div>
           </div>
         </section>

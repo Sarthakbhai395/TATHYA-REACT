@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FaBell, FaCheckCircle, FaTimesCircle, FaInfoCircle } from 'react-icons/fa';
+import { API_BASE } from '../utils/api';
 
 const NotificationComponent = () => {
   const [notifications, setNotifications] = useState([]);
@@ -12,8 +13,7 @@ const NotificationComponent = () => {
 
   const fetchNotifications = async () => {
     try {
-      const userInfo = localStorage.getItem('userInfo');
-      const token = userInfo ? JSON.parse(userInfo).token : '';
+      const token = localStorage.getItem('tathya_token');
 
       const config = {};
       if (token) {
@@ -21,7 +21,7 @@ const NotificationComponent = () => {
           Authorization: `Bearer ${token}`,
         };
       }
-      const { data } = await axios.get('/api/notifications', config);
+      const { data } = await axios.get(`${API_BASE}/notifications`, config);
       if (Array.isArray(data)) {
         setNotifications(data);
       } else {
@@ -30,13 +30,21 @@ const NotificationComponent = () => {
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      // If unauthorized, clear auth storage
+      if (error.response && error.response.status === 401) {
+        localStorage.removeItem('tathya_user');
+        localStorage.removeItem('tathya_token');
+        localStorage.removeItem('tathya-is-authenticated');
+        localStorage.removeItem('user-profile-data');
+        // Dispatch custom event to notify navbar of auth state change
+        window.dispatchEvent(new CustomEvent('authStateChanged'));
+      }
     }
   };
 
   const markAsRead = async (id) => {
     try {
-      const userInfo = localStorage.getItem('userInfo');
-      const token = userInfo ? JSON.parse(userInfo).token : '';
+      const token = localStorage.getItem('tathya_token');
 
       const config = {};
       if (token) {
@@ -44,7 +52,7 @@ const NotificationComponent = () => {
           Authorization: `Bearer ${token}`,
         };
       }
-      await axios.put(`/api/notifications/${id}/read`, {}, config);
+      await axios.put(`${API_BASE}/notifications/${id}/read`, {}, config);
       setNotifications(notifications.map((notif) => (notif._id === id ? { ...notif, read: true } : notif)));
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -53,8 +61,7 @@ const NotificationComponent = () => {
 
   const deleteNotification = async (id) => {
     try {
-      const userInfo = localStorage.getItem('userInfo');
-      const token = userInfo ? JSON.parse(userInfo).token : '';
+      const token = localStorage.getItem('tathya_token');
 
       const config = {};
       if (token) {
@@ -62,7 +69,7 @@ const NotificationComponent = () => {
           Authorization: `Bearer ${token}`,
         };
       }
-      await axios.delete(`/api/notifications/${id}`, config);
+      await axios.delete(`${API_BASE}/notifications/${id}`, config);
       setNotifications(notifications.filter((notif) => notif._id !== id));
     } catch (error) {
       console.error('Error deleting notification:', error);

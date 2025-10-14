@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -7,13 +6,16 @@ import authService from '../../services/authService';
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const check = () => {
       const isAuth = localStorage.getItem('tathya-is-authenticated') === 'true';
+      const user = JSON.parse(localStorage.getItem('tathya_user') || 'null');
       console.log('Auth check:', isAuth);
       setIsAuthenticated(isAuth);
+      setUserRole(user?.role || null);
     };
     check();
     // Listen for storage changes (when user logs in/out in another tab)
@@ -29,6 +31,7 @@ const Navbar = () => {
   const handleLogout = () => {
     authService.clearAuthStorage();
     setIsAuthenticated(false);
+    setUserRole(null);
     navigate('/');
   };
 
@@ -75,12 +78,21 @@ const Navbar = () => {
               </>
             ) : (
               <>
-                <button 
-                  onClick={handleDashboardClick}
-                  className="px-3 py-2 rounded bg-blue-600 text-sm text-white hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
-                >
-                  Dashboard
-                </button>
+                {userRole === 'moderator' ? (
+                  <Link 
+                    to="/moderator-dashboard"
+                    className="px-3 py-2 rounded bg-purple-600 text-sm text-white hover:bg-purple-700 transition-colors duration-200"
+                  >
+                    Moderator Dashboard
+                  </Link>
+                ) : (
+                  <button 
+                    onClick={handleDashboardClick}
+                    className="px-3 py-2 rounded bg-blue-600 text-sm text-white hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
+                  >
+                    Dashboard
+                  </button>
+                )}
                 <button 
                   onClick={handleLogout} 
                   className="px-3 py-2 rounded text-sm text-white bg-red-600 hover:bg-red-700 transition-colors duration-200 cursor-pointer"
@@ -124,16 +136,26 @@ const Navbar = () => {
               </>
             ) : (
               <>
-                <button 
-                  onClick={() => {
-                    console.log('Mobile dashboard button clicked');
-                    handleDashboardClick();
-                    setIsMenuOpen(false);
-                  }} 
-                  className="block py-2 px-3 hover:bg-gray-100 rounded transition-colors duration-200 text-left w-full text-blue-600"
-                >
-                  Dashboard
-                </button>
+                {userRole === 'moderator' ? (
+                  <Link 
+                    to="/moderator-dashboard"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="block py-2 px-3 hover:bg-gray-100 rounded transition-colors duration-200 text-left w-full text-purple-600"
+                  >
+                    Moderator Dashboard
+                  </Link>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      console.log('Mobile dashboard button clicked');
+                      handleDashboardClick();
+                      setIsMenuOpen(false);
+                    }} 
+                    className="block py-2 px-3 hover:bg-gray-100 rounded transition-colors duration-200 text-left w-full text-blue-600"
+                  >
+                    Dashboard
+                  </button>
+                )}
                 <button 
                   onClick={() => { 
                     handleLogout(); 

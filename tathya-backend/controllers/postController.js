@@ -112,6 +112,28 @@ const getRecentPosts = asyncHandler(async (req, res) => {
   const pageSize = 12;
   const page = Number(req.query.pageNumber) || 1;
 
+  const count = await Post.countDocuments({ isVisible: true, approved: true });
+  const posts = await Post.find({ isVisible: true, approved: true })
+    .sort({ createdAt: -1 })
+    .limit(pageSize)
+    .skip(pageSize * (page - 1));
+
+  res.json({ posts, page, pages: Math.ceil(count / pageSize), total: count });
+});
+
+// @desc    Get all posts for moderation (including unapproved posts)
+// @route   GET /api/posts/moderation
+// @access  Private/Moderator
+const getPostsForModeration = asyncHandler(async (req, res) => {
+  // Check if user is moderator
+  if (req.user.role !== 'moderator') {
+    res.status(403);
+    throw new Error('Access denied. Moderators only.');
+  }
+  
+  const pageSize = 12;
+  const page = Number(req.query.pageNumber) || 1;
+
   const count = await Post.countDocuments({ isVisible: true });
   const posts = await Post.find({ isVisible: true })
     .sort({ createdAt: -1 })
@@ -120,6 +142,7 @@ const getRecentPosts = asyncHandler(async (req, res) => {
 
   res.json({ posts, page, pages: Math.ceil(count / pageSize), total: count });
 });
+
 const getPostById = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.id);
 
@@ -352,8 +375,9 @@ const likeComment = asyncHandler(async (req, res) => {
 
 module.exports = {
   createPost,
-  getRecentPosts,
   getPostsByCommunity,
+  getRecentPosts,
+  getPostsForModeration,
   getPostById,
   updatePost,
   deletePost,

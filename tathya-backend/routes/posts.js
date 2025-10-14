@@ -9,6 +9,7 @@ const {
 	likePost,
 	addComment,
 	likeComment,
+	getPostsForModeration,
 } = require('../controllers/postController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -20,6 +21,7 @@ router.get('/community/:communityId', getPostsByCommunity);
 // Global recent posts
 const { getRecentPosts } = require('../controllers/postController');
 router.get('/', getRecentPosts);
+router.get('/moderation', protect, getPostsForModeration);
 router.get('/:id', getPostById);
 
 // Protected routes

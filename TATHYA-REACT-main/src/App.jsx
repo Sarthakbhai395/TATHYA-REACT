@@ -12,11 +12,13 @@ import Guidelines from './pages/Guidelines';
 import ResumeBuilder from './components/features/ResumeBuilder';
 import SuccessStories from './pages/success-stories';
 import Moderator from './pages/Moderator';
+import ModeratorDashboard from './pages/ModeratorDashboard';
 import Navbar from './components/layout/Navbar';
 import Notifications from './pages/Notifications';
 import CommunityHub from './pages/CommunityHub'; // Import CommunityHub
 import AddToCommunity from './pages/AddToCommunity'; // Import AddToCommunity
 import ForgotPassword from './pages/ForgotPassword'; // Import ForgotPassword
+import ProtectedRoute from './components/ProtectedRoute'; // Import ProtectedRoute
 
 function App() {
 
@@ -36,7 +38,10 @@ function App() {
         <Route path="/contact" element={<Contact />} />
 
         {/* User Dashboard route */}
-        <Route path="/user-dashboard" element={<UserDashboard />} />
+        <Route path="/user-dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+
+        {/* Moderator Dashboard route */}
+        <Route path="/moderator-dashboard" element={<ProtectedRoute><ModeratorDashboard /></ProtectedRoute>} />
 
         {/* Login page route */}
         <Route path="/login" element={<Login />} />

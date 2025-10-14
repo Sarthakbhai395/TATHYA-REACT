@@ -1,8 +1,12 @@
 // src/pages/UserDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
+
 import { getProfile } from '../services/authService';
 import * as dashboardService from '../services/dashboardService';
+import { getUserMessages } from '../services/messageService';
+import socketService from '../services/socketService';
 import { API_BASE, getAuthHeaders } from '../utils/api';
 // Import Framer Motion
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,7 +18,58 @@ import NotificationComponent from '../components/NotificationComponent.jsx';
 const UserDashboard = () => {
   const navigate = useNavigate();
 
-  // Fetch authenticated user's profile and data on mount
+  // --- Messages State ---
+  const [messages, setMessages] = useState([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  
+  // Fetch user messages
+  const fetchUserMessages = async () => {
+    try {
+      setLoadingMessages(true);
+      const fetchedMessages = await getUserMessages();
+      setMessages(fetchedMessages);
+    } catch (error) {
+      console.error('Failed to fetch messages:', error);
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+  
+  // Poll for new messages
+  useEffect(() => {
+    // Check for new messages every 5 seconds
+    const interval = setInterval(() => {
+      fetchUserMessages();
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Initialize socket connection
+  useEffect(() => {
+    const socket = socketService.connect();
+    
+    // Handle receiving messages
+    const handleReceiveMessage = (message) => {
+      // Add new message to the top of the list
+      setMessages(prevMessages => {
+        // Check if message already exists
+        const exists = prevMessages.some(msg => msg._id === message._id);
+        if (!exists) {
+          return [message, ...prevMessages];
+        }
+        return prevMessages;
+      });
+    };
+    
+    socketService.onMessageReceived(handleReceiveMessage);
+    
+    return () => {
+      socketService.offMessageReceived(handleReceiveMessage);
+    };
+  }, []);
+  
+  // Fetch data on mount
   useEffect(() => {
     const token = localStorage.getItem('tathya_token');
     if (!token) {
@@ -88,6 +143,13 @@ const UserDashboard = () => {
           }
         } catch (activityErr) {
           console.log('Using local activities fallback:', activityErr.message);
+        }
+        
+        // Load user messages
+        try {
+          await fetchUserMessages();
+        } catch (messageErr) {
+          console.log('Failed to load messages:', messageErr.message);
         }
 
       } catch (err) {
@@ -753,6 +815,7 @@ const UserDashboard = () => {
     { id: 'dashboard-overview', icon: 'fa-th-large', label: 'Dashboard' },
     { id: 'profile-section', icon: 'fa-user', label: 'Profile' },
     { id: 'resume-section', icon: 'fa-file-alt', label: 'Resume' },
+    { id: 'moderator-messages', icon: 'fa-comments', label: 'Moderator Messages' },
     { id: 'documents-section', icon: 'fa-folder-open', label: 'Documents' },
     { id: 'reports-section', icon: 'fa-clipboard-list', label: 'Reports' },
     { id: 'help-section', icon: 'fa-question-circle', label: 'Help & Support' },
@@ -1444,6 +1507,81 @@ const UserDashboard = () => {
             </div>
           )}
           
+          {/* Moderator Messages Section */}
+          {activeMenu === 'moderator-messages' && (
+            <div className="moderator-messages-section animate-fade-in">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">Messages from Moderator</h2>
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <i className="fas fa-user-shield text-blue-500 text-xl"></i>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-lg font-medium text-blue-800">Important Notice</h3>
+                      <p className="text-blue-700 mt-1">
+                        This section displays messages from our moderators. If you have any questions or need assistance, 
+                        you can also reach out to our moderation team directly.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Messages List */}
+                <div className="messages-list space-y-4">
+                  {loadingMessages ? (
+                    <div className="flex justify-center items-center h-32">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="text-center py-8">
+                      <i className="fas fa-envelope-open-text text-gray-400 text-3xl mb-3"></i>
+                      <p className="text-gray-500">No messages from moderators yet.</p>
+                    </div>
+                  ) : (
+                    messages
+                      .filter(msg => msg.from.role === 'moderator') // Only show messages from moderators
+                      .map((msg) => (
+                        <div key={msg._id} className="message-card border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center">
+                              <img 
+                                src={msg.from.avatar} 
+                                alt={msg.from.fullName} 
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                              <div className="ml-3">
+                                <h4 className="font-medium text-gray-800">{msg.from.fullName}</h4>
+                                <p className="text-sm text-gray-600">{formatTimestamp(msg.timestamp)}</p>
+                              </div>
+                            </div>
+                            {!msg.read && (
+                              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">New</span>
+                            )}
+                          </div>
+                          <div className="mt-3">
+                            <p className="text-gray-700">{msg.content}</p>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+                
+                {/* Contact Moderator Button */}
+                <div className="mt-6">
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => navigate('/moderator')}
+                    className="contact-moderator-btn bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 px-4 rounded-md transition-all duration-300 inline-flex items-center shadow-md hover:shadow-lg"
+                  >
+                    <i className="fas fa-comments mr-2"></i> Contact Moderator
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Documents Section */}
           {activeMenu === 'documents-section' && (
             <div className="documents-section animate-fade-in">
@@ -1715,41 +1853,11 @@ const UserDashboard = () => {
                     </Link>
                   </div>
                   
-                  {/* Report a Problem (Removed as requested) */}
-                  {/* <div className="help-card border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow duration-300">
-                    <div className="flex items-start mb-3">
-                      <i className="fas fa-bug text-red-500 text-xl mt-1 mr-3"></i>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-800">Report a Bug or Issue</h3>
-                        <p className="text-gray-600 text-sm mt-1">Tell us about technical problems you encounter.</p>
-                      </div>
-                    </div>
-                    <Link to="/report-problem" className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium mt-2">
-                      Submit Report <i className="fas fa-arrow-right ml-1 text-xs"></i>
-                    </Link>
-                  </div> */}
+
                 </div>
                 
                 {/* Emergency Contact (Removed as requested) */}
-                {/* <div className="emergency-contact bg-red-50 border-l-4 border-red-500 p-4 rounded">
-                  <h3 className="text-lg font-semibold text-red-700 flex items-center">
-                    <i className="fas fa-exclamation-triangle mr-2"></i> Crisis or Emergency?
-                  </h3>
-                  <p className="text-red-600 mt-1">
-                    If you are in immediate danger or experiencing a crisis, please contact local emergency services (Police: 100, Ambulance: 102) or a national helpline.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <a href="tel:100" className="text-sm bg-red-600 text-white py-1 px-3 rounded hover:bg-red-700 transition-colors">
-                      Call Police (100)
-                    </a>
-                    <a href="tel:102" className="text-sm bg-red-600 text-white py-1 px-3 rounded hover:bg-red-700 transition-colors">
-                      Call Ambulance (102)
-                    </a>
-                    <a href="https://www.vimhansdelhi.com/" target="_blank" rel="noopener noreferrer" className="text-sm bg-red-600 text-white py-1 px-3 rounded hover:bg-red-700 transition-colors">
-                      National Mental Health Helpline
-                    </a>
-                  </div>
-                </div> */}
+
               </div>
             </div>
           )}

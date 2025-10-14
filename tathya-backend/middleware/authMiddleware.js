@@ -21,9 +21,15 @@ const protect = asyncHandler(async (req, res, next) => {
 
       next();
     } catch (error) {
-      console.error(error);
+      console.error('JWT Verification Error:', error.message);
       res.status(401);
-      throw new Error('Not authorized, token failed');
+      if (error.name === 'JsonWebTokenError') {
+        throw new Error('Not authorized, invalid token signature');
+      } else if (error.name === 'TokenExpiredError') {
+        throw new Error('Not authorized, token expired');
+      } else {
+        throw new Error('Not authorized, token failed');
+      }
     }
   }
 

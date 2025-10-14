@@ -86,10 +86,10 @@ const Signup = () => {
         password: formData.password,
         role: formData.role,
       };
-  await authService.signup(payload);
-  setIsSubmitting(false);
-  // After successful signup, navigate to login page and prefill email
-  navigate('/login', { state: { email: formData.email } });
+      await authService.signup(payload);
+      setIsSubmitting(false);
+      // After successful signup, navigate to login page and prefill email
+      navigate('/login', { state: { email: formData.email } });
     } catch (err) {
       setIsSubmitting(false);
       alert(err.message || 'Signup failed');
