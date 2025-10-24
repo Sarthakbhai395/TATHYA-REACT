@@ -1,0 +1,41 @@
+# Node modules
+node_modules/
+
+# Environment files
+.env
+
+# IDE files
+.vscode/
+*.code-workspace
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Icon?
+[Tt]humbs.db
+
+# Build outputs
+dist/
+build/
+
+# Log files
+*.log
+
+# Uploads directory (contains user data that shouldn't be committed)
+tathya-backend/uploads/
+
+# Vite cache
+tathya-frontend/node_modules/.vite/
+
+# Temporary files
+*.tmp
+*.temp
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

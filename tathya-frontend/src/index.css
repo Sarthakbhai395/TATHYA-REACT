@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/* Dark mode styles */
+.dark {
+  color-scheme: dark;
+}
+
+/* Custom dark mode styles for specific components */
+.dark .bg-white {
+  background-color: #1f2937; /* gray-800 */
+}
+
+.dark .text-gray-800 {
+  color: #f9fafb; /* gray-50 */
+}
+
+.dark .text-gray-700 {
+  color: #f3f4f6; /* gray-100 */
+}
+
+.dark .text-gray-600 {
+  color: #e5e7eb; /* gray-200 */
+}
+
+.dark .text-gray-500 {
+  color: #d1d5db; /* gray-300 */
+}
+
+.dark .border-gray-200 {
+  border-color: #374151; /* gray-700 */
+}
+
+.dark .border-gray-300 {
+  border-color: #4b5563; /* gray-600 */
+}
+
+.dark .hover\:bg-gray-50:hover {
+  background-color: #374151; /* gray-700 */
+}
+
+.dark .hover\:bg-gray-100:hover {
+  background-color: #4b5563; /* gray-600 */
+}
+
+@keyframes scroll-y {
+  0% {
+    transform: translateY(0%);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
+}
+
+.animate-scroll-y {
+  animation: scroll-y 20s linear infinite;
+}

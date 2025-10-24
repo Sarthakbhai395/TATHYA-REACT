@@ -1,0 +1,3 @@
+export default {
+  VITE_API_BASE: 'http://localhost:5000/api'
+};
